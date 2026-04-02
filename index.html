@@ -1038,85 +1038,93 @@ async function generateLesson() {
   btn.classList.add('loading');
   btn.disabled = true;
 
-  const prompt = `You are an expert English teacher for young learners (ages ${age}, ${level} level).
-Create a complete interactive English lesson about: "${topic}"
-${extra ? `Additional instructions: ${extra}` : ''}
+  const prompt = `You are a world-class English curriculum designer creating a PREMIUM interactive English lesson for young learners (ages ${age}, ${level} level).
 
-IMPORTANT: Return ONLY valid JSON. No markdown, no backticks, no explanation. Just raw JSON.
+Topic: "${topic}"
+${extra ? `Teacher's special instructions: ${extra}` : ''}
 
-The JSON structure must be exactly:
+CONTENT PHILOSOPHY — make this lesson MEMORABLE, not textbook-boring:
+1. REAL-WORLD HOOK: Start the story with a surprising fact, a question, or something the student can relate to in daily life.
+2. CULTURAL RICHNESS: Weave in real cultural details — food names, places, traditions, fun facts about the topic from around the world.
+3. STORYTELLING: The reading passage must feel like a mini-story with a character who has a name, a goal, and a small problem to solve. Not a flat description.
+4. VOCABULARY IN CONTEXT: Vocabulary words must appear naturally in the story — not forced. Each word should paint a picture.
+5. GRAMMAR WITH PURPOSE: Grammar rules must connect to the story's sentences. No abstract or irrelevant examples.
+6. QUIZ VARIETY: Mix question types — "true or false", "what would YOU do?", word meaning, fill in the blank, cultural fact.
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no backticks, no explanation.
+
+JSON structure:
 {
-  "title": "Lesson title",
+  "title": "Catchy and fun lesson title related to the topic",
   "reading": {
-    "title": "Story title",
-    "passage": "A detailed and engaging story of AT LEAST 120 words (10-15 sentences). Use vocabulary appropriate for the level and age group. Include several CVC words naturally in context. Make it interesting and fun with vivid descriptions.",
-    "cvc_words": ["list", "of", "cvc", "words", "found", "in", "the", "story"],
+    "title": "Creative story title (not just the topic name)",
+    "passage": "Write a vivid, engaging story of AT LEAST 120–150 words. Use a named character (e.g. Mia, Ben, Leo). Include a cultural detail or surprising fact. Use sensory language (sights, sounds, smells). End with a satisfying mini-conclusion. Age-appropriate for ${age}. Naturally include several CVC words.",
+    "cvc_words": ["real", "CVC", "words", "from", "the", "story"],
     "questions": [
       {
-        "question": "Reading comprehension question?",
-        "options": ["A", "B", "C"],
-        "answer": "A"
+        "question": "Specific comprehension or inference question about the story?",
+        "options": ["Option A", "Option B", "Option C"],
+        "answer": "Option A"
       }
     ]
   },
   "vocabulary": {
     "words": [
       {
-        "word": "word",
-        "type": "noun/verb/adjective",
-        "meaning": "Simple English definition",
+        "word": "word from story",
+        "type": "noun/verb/adjective/adverb",
+        "meaning": "Kid-friendly English definition in 1 clear sentence",
         "vietnamese": "Vietnamese translation",
         "emoji": "🎯",
-        "example": "Example sentence using the word"
+        "example": "A natural, fun example sentence using this word in real life"
       }
     ],
     "fill_exercises": [
       {
-        "sentence": "The ___ is in the garden.",
-        "answer": "cat"
+        "sentence": "Fill-in-blank sentence using story vocabulary. The ___ is...",
+        "answer": "word"
       }
     ]
   },
   "grammar": {
     "rules": [
       {
-        "title": "Grammar Point Title",
-        "explanation": "Simple explanation of the grammar rule",
-        "structure": "Subject + verb + object",
+        "title": "Clear grammar point name",
+        "explanation": "Plain-English explanation a child can understand. Use analogies if helpful.",
+        "structure": "Subject + Verb + ...",
         "examples": [
-          {"sentence": "She has a cat.", "highlight": "has"}
+          {"sentence": "Sentence from or inspired by the story.", "highlight": "key grammar word"}
         ]
       }
     ],
     "exercises": [
       {
-        "question": "She ___ a red bag. (has/have)",
-        "options": ["has", "have"],
-        "answer": "has"
+        "question": "Fun, story-connected grammar question. She ___ (go/goes) to the market.",
+        "options": ["go", "goes"],
+        "answer": "goes"
       }
     ]
   },
   "quiz": [
     {
-      "type": "reading/vocabulary/grammar",
-      "question": "Mixed review question?",
+      "type": "reading/vocabulary/grammar/culture",
+      "question": "Engaging mixed-review question. Include at least 2 culture or real-world questions.",
       "options": ["A", "B", "C"],
       "answer": "A"
     }
   ]
 }
 
-Requirements:
-- reading.questions: exactly 4 questions
-- vocabulary.words: exactly 8 words from the story
-- vocabulary.fill_exercises: exactly 6 sentences
-- grammar.rules: 1-2 grammar points relevant to the story
-- grammar.exercises: exactly 5 questions
-- quiz: exactly 8 mixed questions
-- All content appropriate for ages ${age}
-- Vietnamese translations for vocabulary
-- CVC words should be real CVC pattern words (consonant-vowel-consonant)
-- Make it fun and engaging!`;
+Hard requirements:
+- reading.questions: exactly 4 (mix comprehension and inference)
+- vocabulary.words: exactly 8 (chosen for usefulness in real life)
+- vocabulary.fill_exercises: exactly 6 (varied, not repetitive)
+- grammar.rules: 1–2 rules that emerge naturally from the story
+- grammar.exercises: exactly 5 (progressively harder)
+- quiz: exactly 8 (include at least 2 culture/real-world questions)
+- Vietnamese translations required for all vocabulary
+- CVC words must be real consonant-vowel-consonant pattern words
+- DO NOT use placeholder names like "name" or "character". Use real names like Mia, Ben, Tom, Luna, etc.`;
 
   const apiKey = document.getElementById('groqKeyInput').value.trim();
   if (!apiKey) {
