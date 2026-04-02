@@ -946,7 +946,8 @@ body::before {
       <div class="input-row">
         <div class="input-group">
           <label style="color: #F97316;">🔑 Groq API Key (Required)</label>
-          <input type="password" id="groqKeyInput" placeholder="gsk_...">
+          <input type="password" id="groqKeyInput" placeholder="gsk_..." oninput="saveKey()">
+          <span id="keySavedTag" style="font-size:12px;color:#10b981;margin-top:4px;display:none;">✅ Key đã được lưu sẵn</span>
         </div>
       </div>
       <button class="generate-btn" id="generateBtn" onclick="generateLesson()">
@@ -1004,6 +1005,21 @@ body::before {
 <script>
 let lessonData = null;
 let currentModalWord = '';
+
+// ===== KEY MEMORY =====
+function saveKey() {
+  const k = document.getElementById('groqKeyInput').value.trim();
+  if (k) localStorage.setItem('groq_api_key', k);
+}
+function loadSavedKey() {
+  const saved = localStorage.getItem('groq_api_key');
+  if (saved) {
+    document.getElementById('groqKeyInput').value = saved;
+    const tag = document.getElementById('keySavedTag');
+    if (tag) tag.style.display = 'block';
+  }
+}
+window.addEventListener('DOMContentLoaded', loadSavedKey);
 
 // ===== API CALL =====
 async function generateLesson() {
@@ -1118,7 +1134,7 @@ Requirements:
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.7
