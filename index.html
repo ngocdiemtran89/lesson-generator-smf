@@ -1612,54 +1612,192 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-// ===== EXPORT PDF =====
-async function exportPDF() {
-  showToast('📄 Generating PDF...');
+// ===== EXPORT PDF (BOOK STYLE) =====
+function exportPDF() {
+  if (!lessonData) return;
+  showToast('\uD83D\uDCC4 Opening print preview...');
+
+  const topic = document.getElementById('topicInput').value.trim();
+  const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(topic)}/800/260`;
+  const r = lessonData.reading;
+  const v = lessonData.vocabulary;
+  const g = lessonData.grammar;
+  const quiz = lessonData.quiz || [];
+
+  const vocabTableRows = (v.words || []).map((w, i) => `
+    <tr style="background:${i%2===0?'#fffbf5':'white'}">
+      <td><strong style="color:#c2410c">${w.word}</strong><br><span style="font-size:10px;color:#94a3b8;text-transform:uppercase">${w.type||''}</span></td>
+      <td>${w.meaning || ''}</td>
+      <td style="color:#047857;font-style:italic">${w.vietnamese || ''}</td>
+      <td style="font-size:11px;color:#64748b">${w.example || ''}</td>
+    </tr>`).join('');
+
+  const fillRows = (v.fill_exercises || []).map((f, i) => {
+    const parts = f.sentence.split(/___+|_+/);
+    return `<div class="ex-item">\u00A0\u00A0<span class="ex-n">${i+1}</span> ${parts[0]||''}<span class="blank"></span>${parts[1]||''}</div>`;
+  }).join('');
+
+  const grammarBoxes = (g.rules || []).map(rule => `
+    <div class="g-box">
+      <div class="g-title">&#128208; ${rule.title}</div>
+      <p>${rule.explanation}</p>
+      ${rule.structure ? `<div class="g-struct">&#128221; ${rule.structure}</div>` : ''}
+      ${(rule.examples||[]).map(ex=>`<div class="g-ex">&rarr; <em>${ex.sentence}</em></div>`).join('')}
+    </div>`).join('');
+
+  const grammarEx = (g.exercises||[]).map((q,i)=>`
+    <div class="ex-item"><span class="ex-n">${i+1}</span> ${q.question}
+    <div class="choices">${q.options.map((o,j)=>`<span class="choice">${String.fromCharCode(65+j)}) ${o}</span>`).join('')}</div></div>`).join('');
+
+  const quizEx = quiz.map((q,i)=>`
+    <div class="ex-item"><span class="ex-n q-n">${i+1}</span> ${q.question}
+    <div class="choices">${q.options.map((o,j)=>`<span class="choice">${String.fromCharCode(65+j)}) ${o}</span>`).join('')}</div></div>`).join('');
+
+  const readingQ = (r.questions||[]).map((q,i)=>`
+    <div class="ex-item"><span class="ex-n">${i+1}</span> ${q.question}
+    <div class="choices">${q.options.map((o,j)=>`<span class="choice">${String.fromCharCode(65+j)}) ${o}</span>`).join('')}</div></div>`).join('');
+
+  const bookHTML = `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>${lessonData.title}</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Georgia, 'Times New Roman', serif; font-size: 11.5pt; color: #1a1a2e; background: white; }
+  
+  /* COVER PAGE */
+  .cover { text-align: center; padding: 30mm 0 20mm; page-break-after: always; }
+  .cover-badge { display: inline-block; background: #0d9488; color: white; font-family: Arial, sans-serif; font-size: 9pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; padding: 5px 16px; border-radius: 20px; margin-bottom: 18px; }
+  .cover-img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 10px; margin: 16px 0; }
+  .cover h1 { font-size: 26pt; color: #0d9488; margin: 12px 0 6px; line-height: 1.3; }
+  .cover h2 { font-size: 14pt; color: #64748b; font-weight: normal; font-style: italic; margin-bottom: 24px; }
+  .cover-line { width: 60px; height: 3px; background: #0d9488; margin: 0 auto 20px; }
+  .cover-meta { font-family: Arial, sans-serif; font-size: 10pt; color: #64748b; line-height: 2.2; }
+  .cover-meta span { display: inline-block; border-bottom: 1px solid #94a3b8; min-width: 140px; margin-left: 8px; }
+  .cover-footer { margin-top: 32px; font-family: Arial, sans-serif; font-size: 9pt; color: #94a3b8; }
+
+  /* SECTION TITLE */
+  .sec-header { display: flex; align-items: center; margin: 0 0 14px; page-break-after: avoid; }
+  .sec-num { width: 32px; height: 32px; border-radius: 50%; color: white; font-family: Arial,sans-serif; font-weight: bold; font-size: 13pt; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 10px; }
+  .sec-title { font-family: Arial, sans-serif; font-size: 15pt; font-weight: bold; border-bottom: 2px solid; padding-bottom: 4px; flex: 1; }
+  
+  /* READING */
+  .page-break { page-break-before: always; }
+  .story-title { font-size: 13pt; color: #0d9488; font-style: italic; margin-bottom: 10px; text-align: center; }
+  .passage { background: #fffdf0; border: 1px solid #fde68a; border-left: 5px solid #f59e0b; padding: 14px 18px; line-height: 2; font-size: 11.5pt; }
+  
+  /* VOCAB TABLE */
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10.5pt; }
+  th { background: #0d9488; color: white; font-family: Arial,sans-serif; font-size: 9.5pt; padding: 7px 10px; text-align: left; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+
+  /* EXERCISES */
+  .sub-title { font-family: Arial,sans-serif; font-size: 11pt; font-weight: bold; margin: 16px 0 8px; color: #1e293b; border-left: 4px solid; padding-left: 8px; }
+  .ex-item { background: #f8fafc; border-radius: 6px; padding: 9px 12px; margin-bottom: 7px; font-size: 11pt; line-height: 1.6; }
+  .ex-n { display: inline-flex; justify-content: center; align-items: center; width: 22px; height: 22px; border-radius: 50%; color: white; font-family: Arial,sans-serif; font-weight: bold; font-size: 9.5pt; background: #0d9488; margin-right: 6px; flex-shrink: 0; vertical-align: middle; }
+  .q-n { background: #e11d48 !important; }
+  .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; margin-left: 28px; }
+  .choice { border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 14px; font-size: 10pt; background: white; }
+  .blank { display: inline-block; width: 100px; border-bottom: 1.5px solid #0d9488; margin: 0 6px; vertical-align: bottom; }
+
+  /* GRAMMAR */
+  .g-box { background: #f5f3ff; border: 1px solid #ddd6fe; border-left: 5px solid #7c3aed; border-radius: 6px; padding: 12px 16px; margin-bottom: 10px; }
+  .g-title { font-family: Arial,sans-serif; font-size: 11.5pt; font-weight: bold; color: #7c3aed; margin-bottom: 6px; }
+  .g-box p { font-size: 11pt; line-height: 1.7; }
+  .g-struct { background: white; text-align: center; font-family: Arial,sans-serif; font-weight: bold; color: #7c3aed; border: 1px dashed #ddd6fe; padding: 7px; border-radius: 5px; margin: 8px 0; font-size: 11pt; }
+  .g-ex { margin: 5px 0; padding-left: 10px; font-size: 11pt; color: #334155; }
+
+  /* ANSWER KEY */
+  .answer-key { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 14px 18px; margin-top: 16px; font-family: Arial,sans-serif; font-size: 10.5pt; }
+  .answer-key h3 { color: #15803d; margin-bottom: 8px; font-size: 11pt; }
+  .answer-key p { margin-bottom: 4px; line-height: 1.7; }
+  
+  .footer-note { text-align:center; font-family:Arial,sans-serif; font-size:9pt; color:#94a3b8; margin-top:20px; padding-top:10px; border-top: 1px solid #e2e8f0; }
+</style>
+</head><body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div class="cover-badge">&#128218; English Lesson</div>
+  <img class="cover-img" src="${imageUrl}" alt="${topic}" onerror="this.style.display='none'">
+  <h1>${lessonData.title}</h1>
+  <h2>${r.title || topic}</h2>
+  <div class="cover-line"></div>
+  <div class="cover-meta">
+    Name: <span></span><br>
+    Class: <span></span><br>
+    Date: <span></span>
+  </div>
+  <div class="cover-footer">SMF English Lesson Generator &bull; ${new Date().toLocaleDateString('vi-VN')}</div>
+</div>
+
+<!-- READING -->
+<div class="sec-header">
+  <div class="sec-num" style="background:#0d9488">1</div>
+  <div class="sec-title" style="color:#0d9488;border-color:#0d9488">&#128214; READING</div>
+</div>
+<div class="story-title">${r.title || ''}</div>
+<div class="passage">${r.passage}</div>
+
+<div class="sub-title" style="border-color:#0d9488;color:#0d9488">&#9997;&#65039; Comprehension Questions</div>
+${readingQ}
+
+<!-- VOCABULARY -->
+<div class="sec-header page-break">
+  <div class="sec-num" style="background:#ea580c">2</div>
+  <div class="sec-title" style="color:#ea580c;border-color:#ea580c">&#128221; VOCABULARY</div>
+</div>
+<table>
+  <tr><th>Word</th><th>Meaning (EN)</th><th>Ti&#7871;ng Vi&#7879;t</th><th>Example</th></tr>
+  ${vocabTableRows}
+</table>
+
+<div class="sub-title" style="border-color:#ea580c;color:#ea580c">&#9997;&#65039; Fill in the Blanks</div>
+${fillRows}
+
+<!-- GRAMMAR -->
+<div class="sec-header page-break">
+  <div class="sec-num" style="background:#7c3aed">3</div>
+  <div class="sec-title" style="color:#7c3aed;border-color:#7c3aed">&#128214; GRAMMAR</div>
+</div>
+${grammarBoxes}
+<div class="sub-title" style="border-color:#7c3aed;color:#7c3aed">&#9997;&#65039; Grammar Exercises</div>
+${grammarEx}
+
+<!-- QUIZ -->
+<div class="sec-header page-break">
+  <div class="sec-num" style="background:#e11d48">4</div>
+  <div class="sec-title" style="color:#e11d48;border-color:#e11d48">&#11088; FINAL QUIZ</div>
+</div>
+${quizEx}
+
+<!-- ANSWER KEY -->
+<div class="answer-key" style="margin-top:24px">
+  <h3>&#128273; Answer Key</h3>
+  <p><strong>Reading:</strong> ${(r.questions||[]).map((q,i)=>`${i+1}. ${q.answer}`).join(' &nbsp;|&nbsp; ')}</p>
+  <p><strong>Vocabulary:</strong> ${(v.fill_exercises||[]).map((f,i)=>`${i+1}. ${f.answer}`).join(' &nbsp;|&nbsp; ')}</p>
+  <p><strong>Grammar:</strong> ${(g.exercises||[]).map((q,i)=>`${i+1}. ${q.answer}`).join(' &nbsp;|&nbsp; ')}</p>
+  <p><strong>Quiz:</strong> ${quiz.map((q,i)=>`${i+1}. ${q.answer}`).join(' &nbsp;|&nbsp; ')}</p>
+</div>
+
+<div class="footer-note">End of lesson &bull; ${lessonData.title}</div>
+
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(bookHTML);
+  win.document.close();
+  win.onload = () => {
+    setTimeout(() => { win.print(); }, 600);
+  };
+  showToast('\u2705 Print window opened \u2014 choose Save as PDF!');
+}
+
 
   // Show all tabs temporarily
   const panels = document.querySelectorAll('.tab-panel');
   panels.forEach(p => { p.style.display = 'block'; p.style.pageBreakAfter = 'always'; });
 
-  try {
-    const container = document.getElementById('lessonContainer');
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#F0FDFA',
-      windowWidth: 900
-    });
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    const pageHeight = 297;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position -= pageHeight;
-      pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    const topic = document.getElementById('topicInput').value.trim().replace(/\s+/g, '_') || 'lesson';
-    pdf.save(`English_Lesson_${topic}.pdf`);
-    showToast('✅ PDF saved!');
-  } catch (err) {
-    console.error(err);
-    showToast('❌ PDF export failed');
-  }
-
-  // Restore tabs
-  panels.forEach(p => { p.style.display = ''; p.style.pageBreakAfter = ''; });
-  switchTab(document.querySelector('.tab-btn.active').dataset.tab);
-}
 
 // ===== EXPORT WORD (HTML-based .doc) =====
 function exportWord() {
