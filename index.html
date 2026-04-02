@@ -1049,7 +1049,7 @@ The JSON structure must be exactly:
   "title": "Lesson title",
   "reading": {
     "title": "Story title",
-    "passage": "A short story (6-10 sentences). Use simple vocabulary appropriate for the level. Include several CVC words naturally.",
+    "passage": "A detailed and engaging story of AT LEAST 120 words (10-15 sentences). Use vocabulary appropriate for the level and age group. Include several CVC words naturally in context. Make it interesting and fun with vivid descriptions.",
     "cvc_words": ["list", "of", "cvc", "words", "found", "in", "the", "story"],
     "questions": [
       {
@@ -1184,6 +1184,8 @@ function renderLesson() {
 function renderReading() {
   const r = lessonData.reading;
   let passage = r.passage;
+  const topic = document.getElementById('topicInput').value.trim();
+  const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(topic)}/700/280`;
 
   // Highlight CVC words
   if (r.cvc_words && r.cvc_words.length) {
@@ -1200,7 +1202,7 @@ function renderReading() {
         <div class="q-text">${q.question}</div>
         <div class="comp-options">
           ${q.options.map(opt => `
-            <button class="comp-opt" onclick="answerReading(${i}, '${opt.replace(/'/g, "\\'")}', this)">${opt}</button>
+            <button class="comp-opt" onclick="answerReading(${i}, '${opt.replace(/'/g, "\\'")}'  , this)">${opt}</button>
           `).join('')}
         </div>
       </div>
@@ -1211,6 +1213,7 @@ function renderReading() {
     <div class="lesson-card">
       <span class="card-tag tag-reading">📖 Reading</span>
       <div class="card-title">${r.title || lessonData.title}</div>
+      <img src="${imageUrl}" alt="${topic}" style="width:100%;height:220px;object-fit:cover;border-radius:12px;margin-bottom:16px;">
       <div class="story-passage">${passage}</div>
       <button class="read-btn" onclick="speakText(\`${r.passage.replace(/`/g, "'")}\`)" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:2px solid var(--teal);border-radius:20px;background:var(--teal-light);color:var(--teal);font-family:'Nunito';font-size:13px;font-weight:700;cursor:pointer;">🔊 Read Aloud</button>
       <div class="comprehension" style="margin-top:20px;">
@@ -1781,77 +1784,138 @@ function exportWord() {
 // ===== EXPORT HTML =====
 function exportHTML() {
   if (!lessonData) return;
-  showToast('🌐 Generating HTML file...');
+  showToast('\uD83C\uDF10 Generating HTML file...');
 
-  const containerClone = document.getElementById('lessonContainer').cloneNode(true);
+  const topic = document.getElementById('topicInput').value.trim();
+  const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(topic)}/800/300`;
+  const r = lessonData.reading;
+  const v = lessonData.vocabulary;
+  const g = lessonData.grammar;
+  const quiz = lessonData.quiz || [];
 
-  containerClone.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
-  containerClone.querySelector('.export-bar').style.display = 'none';
-  containerClone.querySelectorAll('.tab-panel').forEach(p => {
-    p.style.display = 'block';
-    p.style.opacity = '1';
-    p.style.animation = 'none';
-    p.style.transform = 'none';
-    p.classList.add('active');
-    p.style.marginBottom = '40px';
-  });
+  const vocabCardsHTML = (v.words || []).map(w => `
+    <div class="vocab-card">
+      <div class="v-emoji">${w.emoji || '\uD83D\uDCCC'}</div>
+      <div class="v-word">${w.word}</div>
+      <div class="v-type">${w.type || ''}</div>
+      <div class="v-meaning">${w.meaning || ''}</div>
+      <div class="v-vi">${w.vietnamese || ''}</div>
+      <div class="v-example">"${w.example || ''}"</div>
+    </div>`).join('');
+
+  const fillHTML = (v.fill_exercises || []).map((f, i) => {
+    const parts = f.sentence.split(/___+|_+/);
+    return `<div class="ex-row"><span class="ex-num" style="background:#ea580c">${i+1}</span> ${parts[0] || ''}<span class="fill-blank"></span>${parts[1] || ''}</div>`;
+  }).join('');
+
+  const grammarHTML = (g.rules || []).map(rule => `
+    <div class="grammar-box">
+      <h3>&#x1F4D0; ${rule.title}</h3>
+      <p>${rule.explanation}</p>
+      ${rule.structure ? `<div class="structure">&#x1F4DD; ${rule.structure}</div>` : ''}
+      ${(rule.examples || []).map(ex => `<div class="example-box">&rarr; <em>${ex.sentence}</em></div>`).join('')}
+    </div>`).join('');
+
+  const grammarExHTML = (g.exercises || []).map((q, i) => `
+    <div class="ex-row"><span class="ex-num" style="background:#7c3aed">${i+1}</span>
+    <span>${q.question}&nbsp;&nbsp;${q.options.map((o,j)=>`<span class="opt">${String.fromCharCode(65+j)}) ${o}</span>`).join('')}</span></div>`).join('');
+
+  const quizHTML = quiz.map((q, i) => `
+    <div class="ex-row"><span class="ex-num" style="background:#e11d48">${i+1}</span>
+    <span>${q.question}&nbsp;&nbsp;${q.options.map((o,j)=>`<span class="opt">${String.fromCharCode(65+j)}) ${o}</span>`).join('')}</span></div>`).join('');
+
+  const readingQHTML = (r.questions || []).map((q, i) => `
+    <div class="ex-row"><span class="ex-num">${i+1}</span>
+    <span>${q.question}<br>${q.options.map((o,j)=>`<span class="opt">${String.fromCharCode(65+j)}) ${o}</span>`).join('')}</span></div>`).join('');
 
   const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${lessonData.title} - Exported Lesson</title>
-  <style>
-    body { font-family: 'Arial', sans-serif; background: #F8FAFC; color: #334155; padding: 20px; line-height: 1.6; max-width: 900px; margin: auto; }
-    .lesson-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 24px; border-left: 5px solid #0D9488;}
-    .vocab-card { border-left-color: #F97316; }
-    .grammar-card { border-left-color: #7C3AED; }
-    .quiz-card { border-left-color: #E11D48; }
-    .card-title { font-size: 24px; font-weight: bold; color: #0D9488; margin-bottom: 16px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; }
-    h1 { text-align: center; color: #0D9488; font-size: 32px; border-bottom: 4px solid #0D9488; display: inline-block; padding-bottom: 10px; margin-bottom: 40px; }
-    .comp-q, .g-question, .fill-sentence { background: #F1F5F9; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
-    .comp-opt, .g-opt { display: inline-block; padding: 8px 16px; margin: 4px; background: white; border: 1px solid #CBD5E1; border-radius: 20px; cursor: pointer; }
-    .comp-opt.correct, .g-opt.correct { background: #ECFCCB; border-color: #65A30D; color: #65A30D; font-weight: bold; }
-    .comp-opt.wrong, .g-opt.wrong { background: #FFF1F2; border-color: #E11D48; color: #E11D48; text-decoration: line-through; }
-    .vocab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-    .vocab-item { background: white; border: 2px solid #FED7AA; border-radius: 8px; padding: 16px; text-align: center; }
-    .v-word { font-size: 20px; font-weight: bold; color: #F97316; margin-bottom: 4px; }
-    .v-type, .v-vi, .v-example { font-size: 13px; color: #64748B; margin-top: 4px; }
-    .grammar-rule { background: #F5F3FF; border: 2px solid #DDD6FE; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-    .grammar-rule h3 { color: #7C3AED; margin-top: 0; }
-    .structure { background: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: #7C3AED; border: 2px dashed #DDD6FE; font-size: 16px; margin: 10px 0;}
-    .example-box { background: white; border-left: 4px solid #7C3AED; padding: 12px 16px; margin: 10px 0; border-radius: 0 8px 8px 0; }
-    .story-passage { background: #FFFBEB; border: 2px solid #FDE68A; border-radius: 8px; padding: 24px; line-height: 2; font-size: 17px; }
-    .check-section, .score-panel, .read-btn, .word-bank, .card-tag { display: none !important; }
-    .q-num, .f-num { display: inline-flex; justify-content: center; align-items: center; width: 28px; height: 28px; background: #0D9488; color: white; border-radius: 50%; font-weight: bold; margin-right: 8px; }
-    .fill-sentence .f-num { background: #F97316; }
-    .fill-blank { display: inline-block; min-width: 80px; text-align: center; border-bottom: 2px solid #333; margin: 0 8px; font-weight: bold; padding: 0 8px; }
-  </style>
-</head>
-<body>
-  <div style="text-align: center;"><h1>📚 ${lessonData.title}</h1></div>
-  ${containerClone.innerHTML}
-  <script>
-    // Auto-reveal answers on click since check buttons are hidden in export
-    document.querySelectorAll('.comp-opt, .g-opt').forEach(btn => {
-      btn.onclick = function() {
-        if(this.classList.contains('correct') || this.classList.contains('wrong')) return;
-        this.style.background = '#e2e8f0';
-      }
-    });
-  <\/script>
-</body>
-</html>`;
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${lessonData.title}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f8fafc;color:#1e293b;max-width:880px;margin:auto;padding:32px 24px 60px}
+.page-title{text-align:center;margin-bottom:28px}
+.page-title h1{font-size:30px;color:#0d9488;margin-bottom:6px}
+.page-title p{color:#64748b;font-size:13px}
+.hero{width:100%;height:260px;object-fit:cover;border-radius:14px;margin-bottom:28px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.sec{background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:22px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.sec-title{font-size:19px;font-weight:bold;padding-bottom:10px;border-bottom:2px solid #e2e8f0;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.passage{background:#fffbeb;border:2px solid #fde68a;border-radius:10px;padding:20px 24px;line-height:2;font-size:16px}
+.vocab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:4px}
+.vocab-card{background:#fff7ed;border:2px solid #fed7aa;border-radius:10px;padding:12px;text-align:center}
+.v-emoji{font-size:26px;margin-bottom:4px}
+.v-word{font-size:17px;font-weight:bold;color:#ea580c}
+.v-type{font-size:11px;color:#94a3b8;text-transform:uppercase;margin:2px 0}
+.v-meaning{font-size:13px;color:#334155}
+.v-vi{font-size:12px;color:#64748b;font-style:italic;margin-top:2px}
+.v-example{font-size:11px;color:#94a3b8;margin-top:6px;padding-top:5px;border-top:1px dashed #e2e8f0}
+.fill-blank{display:inline-block;min-width:110px;border-bottom:2px solid #ea580c;margin:0 6px}
+.ex-row{background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:9px;font-size:15px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.ex-num{background:#0d9488;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.opt{display:inline-block;background:#fff;border:1px solid #cbd5e1;padding:3px 10px;border-radius:16px;font-size:13px;margin:3px 3px 0 0}
+.grammar-box{background:#f5f3ff;border:2px solid #ddd6fe;border-radius:10px;padding:16px;margin-bottom:12px}
+.grammar-box h3{color:#7c3aed;font-size:15px;margin-bottom:8px}
+.grammar-box p{color:#334155;line-height:1.7;font-size:14px}
+.structure{background:#fff;text-align:center;font-weight:700;font-size:14px;color:#7c3aed;padding:9px;border:2px dashed #ddd6fe;border-radius:8px;margin:9px 0}
+.example-box{background:#fff;border-left:4px solid #7c3aed;padding:9px 14px;margin:7px 0;border-radius:0 8px 8px 0;font-size:13px}
+.answer-key{background:#f0fdf4;border:2px solid #bbf7d0;border-radius:10px;padding:18px 24px}
+.answer-key h3{color:#15803d;font-size:15px;margin-bottom:8px}
+.answer-key p{font-size:13px;color:#334155;margin-bottom:4px}
+.footer{text-align:center;color:#94a3b8;font-size:11px;margin-top:28px}
+@media print{body{padding:10px}.sec{box-shadow:none;border:1px solid #e2e8f0;page-break-inside:avoid}}
+</style></head><body>
+<div class="page-title">
+  <h1>\uD83D\uDCDA ${lessonData.title}</h1>
+  <p>Name: ________________________________ &nbsp;&nbsp; Date: _______________ &nbsp;&nbsp; Class: _______________</p>
+</div>
+<img class="hero" src="${imageUrl}" alt="${topic}" onerror="this.style.display='none'">
+
+<div class="sec">
+  <div class="sec-title" style="color:#0d9488;border-color:#ccfbf1">\uD83D\uDCD6 READING &mdash; ${r.title || lessonData.title}</div>
+  <div class="passage">${r.passage}</div>
+  <h4 style="margin:18px 0 10px;color:#0d9488">\u270F\uFE0F Comprehension Questions</h4>
+  ${readingQHTML}
+</div>
+
+<div class="sec">
+  <div class="sec-title" style="color:#ea580c;border-color:#fed7aa">\uD83D\uDCDD VOCABULARY</div>
+  <div class="vocab-grid">${vocabCardsHTML}</div>
+  <h4 style="margin:20px 0 10px;color:#ea580c">\u270F\uFE0F Fill in the Blanks</h4>
+  ${fillHTML}
+</div>
+
+<div class="sec">
+  <div class="sec-title" style="color:#7c3aed;border-color:#ddd6fe">\uD83D\uDD24 GRAMMAR</div>
+  ${grammarHTML}
+  <h4 style="margin:18px 0 10px;color:#7c3aed">\u270F\uFE0F Grammar Exercises</h4>
+  ${grammarExHTML}
+</div>
+
+<div class="sec">
+  <div class="sec-title" style="color:#e11d48;border-color:#fecdd3">\u2B50 FINAL QUIZ</div>
+  ${quizHTML}
+</div>
+
+<div class="answer-key">
+  <h3>\uD83D\uDD11 Answer Key</h3>
+  <p><strong>Reading:</strong> ${(r.questions||[]).map((q,i)=>`${i+1}. ${q.answer}`).join(' | ')}</p>
+  <p><strong>Vocabulary:</strong> ${(v.fill_exercises||[]).map((f,i)=>`${i+1}. ${f.answer}`).join(' | ')}</p>
+  <p><strong>Grammar:</strong> ${(g.exercises||[]).map((q,i)=>`${i+1}. ${q.answer}`).join(' | ')}</p>
+  <p><strong>Quiz:</strong> ${quiz.map((q,i)=>`${i+1}. ${q.answer}`).join(' | ')}</p>
+</div>
+<div class="footer">Generated by SMF English Lesson Generator &bull; ${new Date().toLocaleDateString()}</div>
+</body></html>`;
 
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
   const link = document.createElement('a');
-  const topic = document.getElementById('topicInput').value.trim().replace(/\s+/g, '_') || 'lesson';
   link.href = URL.createObjectURL(blob);
-  link.download = `English_Lesson_${topic}.html`;
+  link.download = `English_Lesson_${topic.replace(/\s+/g,'_') || 'lesson'}.html`;
   link.click();
   URL.revokeObjectURL(link.href);
-  showToast('✅ HTML file saved!');
+  showToast('\u2705 HTML file saved!');
 }
+
+
 </script>
 </body>
 </html>
